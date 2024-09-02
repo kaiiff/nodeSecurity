@@ -3,6 +3,10 @@ const bcrypt = require("bcrypt");
 const Joi = require("joi");
 const { encode } = require("../../middleware/token");
 const generateTokens = require("../../middleware/generateTokens");
+const jwt = require("jsonwebtoken");
+
+const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
 
 async function hashingPassword(password) {
   return await bcrypt.hash(password, 10);
@@ -182,5 +186,68 @@ exports.logOutUser = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).send(error.message);
+  }
+};
+
+exports.refreshAccessToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token is missing",
+      });
+    }
+
+    let decoded;
+
+    try {
+      decoded = await jwt.verify(refreshToken, refreshTokenSecret);
+    } catch (err) {
+      return res.status(403).json({
+        success: false,
+        message: "Invalid or expired refresh token",
+      });
+    }
+
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(403).json({
+        success: false,
+        message: "Invalid token",
+      });
+    }
+
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+      generateTokens(user);
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "New access token issued",
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    console.error("Error refreshing access token:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
