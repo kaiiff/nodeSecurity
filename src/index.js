@@ -6,7 +6,8 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const port = process.env.PORT || 4007;
-const routes = require("./router/index");
+const v1UserRoutes = require("./module/v1/user/routers/userRouter")
+const v1AdminRoutes = require("./module/v1/admin/router/adminRouter")
 
 //Database connection calling here
 const Database = require("./utils/dbConnection");
@@ -19,14 +20,15 @@ const limiter = rateLimit({
   max: 100,
   message: "Too many requests from this IP, please try again later.",
 });
-app.use("/api", limiter);
+app.use("/api/v1/users", limiter);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, "public/images")));
 
-app.use("/api", routes.userRoute);
+app.use("/api/v1/users",v1UserRoutes );
+app.use("/api/v1/admin",v1AdminRoutes)
 
 app.listen(port, () => {
   console.log(`Server start successfully on port: ${port}`);

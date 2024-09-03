@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { encrypt } = require("../utils/encrypt_decrypt");
+const { encrypt } = require("../../../../../utils/encrypt_decrypt");
 
 const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
 const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;

@@ -4,20 +4,18 @@ const { v4: uuid4 } = require("uuid");
 
 var storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname,"../public/images"));
+    cb(null, path.join(__dirname, "../../../../../public/images"));
   },
-  
-  
+
   filename: function (req, file, cb) {
     let ext = path.extname(file.originalname);
     cb(null, uuid4() + ext);
   },
 });
 
-
 var upload = multer({
   storage: storage,
-   limits: { fileSize: 5 * 1024 * 1024 }, // Limit set to 5mb
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limit set to 5mb
   fileFilter: function (req, file, cb) {
     if (
       file.mimetype == "image/jpeg" ||
@@ -35,8 +33,5 @@ var upload = multer({
     }
   },
 });
-
-
-
 
 module.exports = upload;

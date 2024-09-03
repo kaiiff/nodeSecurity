@@ -1,10 +1,10 @@
-const mongoose = require("mongoose")
-const User = require("../../models/User/userModel");
+const mongoose = require("mongoose");
+const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const Joi = require("joi");
-const { encode } = require("../../middleware/token");
-const {decrypt} = require("../../utils/encrypt_decrypt")
-const generateTokens = require("../../middleware/generateTokens");
+
+const { decrypt } = require("../../../../utils/encrypt_decrypt");
+const generateTokens = require("../middleware/middleware/generateTokens");
 const jwt = require("jsonwebtoken");
 
 const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
@@ -189,11 +189,7 @@ exports.logOutUser = async (req, res) => {
     console.error(error);
     return res.status(500).send(error.message);
   }
-};  
-
-
-
-
+};
 
 exports.refreshAccessToken = async (req, res) => {
   try {
@@ -251,23 +247,18 @@ exports.refreshAccessToken = async (req, res) => {
       });
     }
 
-    const { accessToken: newAccessToken } =
-      generateTokens(user);
-
-    
+    const { accessToken: newAccessToken } = generateTokens(user);
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Set secure based on environment
+      secure: process.env.NODE_ENV === "production", // Set secure based on environment
       maxAge: 15 * 60 * 1000,
     });
-    
 
     return res.status(200).json({
       success: true,
       message: "New access token issued",
       accessToken: newAccessToken,
-      
     });
   } catch (error) {
     console.error("Error refreshing access token:", error);
