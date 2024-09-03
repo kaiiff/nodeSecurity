@@ -1,7 +1,9 @@
+const mongoose = require("mongoose")
 const User = require("../../models/User/userModel");
 const bcrypt = require("bcrypt");
 const Joi = require("joi");
 const { encode } = require("../../middleware/token");
+const {decrypt} = require("../../utils/encrypt_decrypt")
 const generateTokens = require("../../middleware/generateTokens");
 const jwt = require("jsonwebtoken");
 
@@ -187,7 +189,11 @@ exports.logOutUser = async (req, res) => {
     console.error(error);
     return res.status(500).send(error.message);
   }
-};
+};  
+
+
+
+
 
 exports.refreshAccessToken = async (req, res) => {
   try {
@@ -203,7 +209,7 @@ exports.refreshAccessToken = async (req, res) => {
     let decoded;
 
     try {
-      decoded = await jwt.verify(refreshToken, refreshTokenSecret);
+      decoded = jwt.verify(refreshToken, refreshTokenSecret);
     } catch (err) {
       return res.status(403).json({
         success: false,
@@ -211,37 +217,57 @@ exports.refreshAccessToken = async (req, res) => {
       });
     }
 
-    const user = await User.findById(decoded.id);
+    let decryptUserId;
+    try {
+      decryptUserId = decrypt(decoded.id);
+    } catch (error) {
+      console.error("Decryption error:", error);
+      return res.status(400).json({
+        success: false,
+        message: "Failed to decrypt user ID",
+      });
+    }
 
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!decryptUserId || !mongoose.Types.ObjectId.isValid(decryptUserId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid decrypted user ID",
+      });
+    }
+
+    const user = await User.findById(decryptUserId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.refreshToken !== refreshToken) {
       return res.status(403).json({
         success: false,
         message: "Invalid token",
       });
     }
 
-    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+    const { accessToken: newAccessToken } =
       generateTokens(user);
 
-    user.refreshToken = newRefreshToken;
-    await user.save();
+    
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Set secure based on environment
       maxAge: 15 * 60 * 1000,
     });
-    res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    
 
     return res.status(200).json({
       success: true,
       message: "New access token issued",
       accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
+      
     });
   } catch (error) {
     console.error("Error refreshing access token:", error);
